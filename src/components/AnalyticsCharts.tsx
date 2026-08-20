@@ -20,6 +20,73 @@ interface AnalyticsChartsProps {
   config: ChartVisualizationConfig;
 }
 
+// Helper function to sort chart data chronologically if the xAxis is date or time bound
+function sortChartDataChronologically(data: Record<string, any>[], xAxisKey: string): Record<string, any>[] {
+  if (!data || data.length <= 1) return data;
+
+  const keyLower = xAxisKey.toLowerCase();
+  const isDateKey = 
+    keyLower.includes('date') ||
+    keyLower.includes('time') ||
+    keyLower.includes('hour') ||
+    keyLower.includes('minute') ||
+    keyLower.includes('month') ||
+    keyLower.includes('year') ||
+    keyLower.includes('day') ||
+    keyLower.includes('period') ||
+    keyLower.includes('week');
+
+  // Check if data is real-time minutesAgo (timeline flows from past ~30m ago to present 0m/now)
+  if (keyLower === 'minutesago') {
+    return [...data].sort((a, b) => Number(b[xAxisKey] || 0) - Number(a[xAxisKey] || 0));
+  }
+
+  // Check if values are GA4 8-digit date strings YYYYMMDD
+  const isYYYYMMDD = data.every(item => {
+    const v = String(item[xAxisKey] ?? '').trim();
+    return /^\d{8}$/.test(v);
+  });
+
+  if (isYYYYMMDD) {
+    return [...data].sort((a, b) => String(a[xAxisKey] || '').localeCompare(String(b[xAxisKey] || '')));
+  }
+
+  // Check if values are ISO format (e.g. YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss)
+  const isISODate = data.every(item => {
+    const v = String(item[xAxisKey] ?? '').trim();
+    return /^\d{4}-\d{2}-\d{2}/.test(v);
+  });
+
+  if (isISODate) {
+    return [...data].sort((a, b) => new Date(a[xAxisKey]).getTime() - new Date(b[xAxisKey]).getTime());
+  }
+
+  // Check if values are 10-digit dateHour (YYYYMMDDHH) or 12-digit dateHourMinute (YYYYMMDDHHMM)
+  const isDateHour = data.every(item => {
+    const v = String(item[xAxisKey] ?? '').trim();
+    return /^\d{10,12}$/.test(v);
+  });
+
+  if (isDateHour) {
+    return [...data].sort((a, b) => String(a[xAxisKey] || '').localeCompare(String(b[xAxisKey] || '')));
+  }
+
+  // If the key is explicitly a date/time dimension
+  if (isDateKey) {
+    const allNumeric = data.every(item => item[xAxisKey] !== undefined && !isNaN(Number(item[xAxisKey])));
+    if (allNumeric) {
+      return [...data].sort((a, b) => Number(a[xAxisKey]) - Number(b[xAxisKey]));
+    }
+    const allParseable = data.every(item => item[xAxisKey] && !isNaN(Date.parse(String(item[xAxisKey]))));
+    if (allParseable) {
+      return [...data].sort((a, b) => new Date(a[xAxisKey]).getTime() - new Date(b[xAxisKey]).getTime());
+    }
+    return [...data].sort((a, b) => String(a[xAxisKey] || '').localeCompare(String(b[xAxisKey] || '')));
+  }
+
+  return data;
+}
+
 export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
   const [chartType, setChartType] = useState<'line' | 'bar' | 'area'>(config.type === 'pie' ? 'bar' : config.type);
   const [visibleKeys, setVisibleKeys] = useState<string[]>(config.dataKeys.map(d => d.key));
@@ -27,6 +94,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
   if (!config.data || config.data.length === 0) {
     return null;
   }
+
+  // Ensure data is chronologically sorted on the X-axis for all time/date dimensions
+  const sortedData = sortChartDataChronologically(config.data, config.xAxisKey);
 
   const toggleKey = (key: string) => {
     if (visibleKeys.includes(key)) {
@@ -39,13 +109,39 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
   };
 
   const formatXAxis = (tickItem: any) => {
-    if (typeof tickItem === 'string' && tickItem.length === 8 && !isNaN(Number(tickItem))) {
-      const m = tickItem.substring(4, 6);
-      const d = tickItem.substring(6, 8);
-      return `${m}/${d}`;
-    }
-    if (typeof tickItem === 'string' && tickItem.length > 16) {
-      return tickItem.substring(0, 15) + '...';
+    if (typeof tickItem === 'string' || typeof tickItem === 'number') {
+      const str = String(tickItem).trim();
+      
+      // GA4 Date: YYYYMMDD
+      if (str.length === 8 && /^\d{8}$/.test(str)) {
+        const m = str.substring(4, 6);
+        const d = str.substring(6, 8);
+        return `${m}/${d}`;
+      }
+
+      // GA4 DateHour: YYYYMMDDHH
+      if (str.length === 10 && /^\d{10}$/.test(str)) {
+        const m = str.substring(4, 6);
+        const d = str.substring(6, 8);
+        const h = str.substring(8, 10);
+        return `${m}/${d} ${h}:00`;
+      }
+
+      // GA4 Minutes Ago: '0' -> 'Now', '5' -> '5m ago'
+      if (config.xAxisKey.toLowerCase() === 'minutesago') {
+        if (str === '0' || str === '00') return 'Now';
+        return `${str}m ago`;
+      }
+
+      // Standard ISO Date: YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const parts = str.split('-');
+        return `${parts[1]}/${parts[2]}`;
+      }
+
+      if (str.length > 16) {
+        return str.substring(0, 15) + '...';
+      }
     }
     return tickItem;
   };
@@ -63,7 +159,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
     return [value, name];
   };
 
-  const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6'];
+  const colors = ['#0062FF', '#00C2FF', '#10B981', '#6366F1', '#F59E0B', '#EC4899'];
 
   return (
     <div className="my-4 p-4 rounded-xl bg-slate-50 border border-slate-200/90 shadow-2xs">
@@ -138,7 +234,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
       <div className="w-full h-64 sm:h-72 mt-2">
         <ResponsiveContainer width="100%" height="100%">
           {chartType === 'line' ? (
-            <LineChart data={config.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey={config.xAxisKey} tickFormatter={formatXAxis} stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} />
@@ -161,7 +257,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
               ))}
             </LineChart>
           ) : chartType === 'bar' ? (
-            <BarChart data={config.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey={config.xAxisKey} tickFormatter={formatXAxis} stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} />
@@ -181,7 +277,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ config }) => {
               ))}
             </BarChart>
           ) : (
-            <AreaChart data={config.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={sortedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey={config.xAxisKey} tickFormatter={formatXAxis} stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} />

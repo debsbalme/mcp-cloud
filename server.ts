@@ -207,6 +207,14 @@ async function executeGA4Report(
 
   if (requestBody.dimensions && requestBody.dimensions.length > 0) {
     payload.dimensions = requestBody.dimensions;
+    if (!payload.orderBys || payload.orderBys.length === 0) {
+      const dateDim = requestBody.dimensions.find(d => 
+        ['date', 'dateHour', 'dateHourMinute', 'hour', 'minute', 'yearMonth', 'isoYearIsoWeek', 'month', 'year'].includes(d.name)
+      );
+      if (dateDim) {
+        payload.orderBys = [{ dimension: { dimensionName: dateDim.name, orderType: 'ALPHANUMERIC' }, desc: false }];
+      }
+    }
   }
 
   if (requestBody.orderBys && requestBody.orderBys.length > 0) {

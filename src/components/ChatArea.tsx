@@ -116,19 +116,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {!isAuthenticated && onOpenAuthModal && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-blue-50 border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
               <div className="space-y-1">
-                <div className="flex items-center gap-2 font-bold text-blue-900 text-sm">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  Connect your Google Analytics Account
+                <div className="flex items-center gap-2 font-bold text-white text-sm">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  Connect your Google Analytics 4 Properties
                 </div>
-                <p className="text-xs text-blue-700">
-                  Sign in with Google to query and explore your live GA4 properties and real-time metrics with zero sample data.
+                <p className="text-xs text-slate-300">
+                  Authenticate securely to run queries and AI explorations directly against live GA4 Data API without sample data.
                 </p>
               </div>
               <button
                 onClick={onOpenAuthModal}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs shrink-0 cursor-pointer transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white rounded-xl text-xs font-bold shadow-xs shrink-0 cursor-pointer transition-all"
               >
                 Sign in with Google
               </button>
@@ -161,8 +161,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </>
                   ) : (
                     <>
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                      ASSISTANT
+                      <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></div>
+                      TRKKN ASSISTANT
                       {msg.propertyContext && (
                         <span className="font-normal text-slate-400">
                           • {msg.propertyContext.name}
@@ -176,8 +176,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <div
                   className={`w-full ${
                     msg.role === 'user'
-                      ? 'bg-slate-100 p-4 rounded-2xl rounded-tl-none text-sm text-slate-700 leading-relaxed shadow-xs'
-                      : 'bg-white border border-slate-200 p-5 rounded-2xl rounded-tr-none shadow-sm text-sm text-slate-700'
+                      ? 'bg-slate-100 p-4 rounded-2xl rounded-tl-none text-sm text-slate-800 leading-relaxed shadow-2xs'
+                      : 'bg-white border border-slate-200/90 p-5 rounded-2xl rounded-tr-none shadow-xs text-sm text-slate-700'
                   }`}
                 >
                   {msg.role === 'user' ? (
@@ -216,8 +216,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           {isLoading && (
             <div className="flex flex-col gap-2 max-w-4xl self-end items-end w-full animate-pulse">
               <div className="flex items-center gap-2 text-xs text-blue-600 font-semibold self-start">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></div>
-                QUERYING GA4 MCP SERVER...
+                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-ping"></div>
+                EXECUTING MCP GA4 DATA QUERY...
               </div>
               <div className="w-full bg-white border border-slate-200 p-5 rounded-2xl rounded-tr-none shadow-xs space-y-3">
                 <div className="h-4 bg-slate-100 rounded w-2/3"></div>
@@ -232,12 +232,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Input Form Bar */}
-      <div className="p-4 sm:p-6 bg-white border-t border-slate-200 shrink-0">
+      <div className="p-4 sm:p-6 bg-white border-t border-slate-200/90 shrink-0">
         <div className="max-w-4xl mx-auto">
           {/* Main Input Box */}
           <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-xs"
+            className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white transition-all shadow-2xs"
           >
             <textarea
               ref={textareaRef}
@@ -253,9 +253,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               type="submit"
               id="chat-send-btn"
               disabled={!inputText.trim() || isLoading}
-              className="bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer"
+              className="bg-slate-900 hover:bg-slate-800 text-white p-2.5 rounded-xl transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs cursor-pointer flex items-center justify-center group"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 text-cyan-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </form>
 
@@ -264,7 +264,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <button
               type="button"
               onClick={() => onSendMessage('Compare active users and sessions between this month vs last month')}
-              className="hover:text-blue-600 transition-colors"
+              className="hover:text-blue-600 transition-colors cursor-pointer"
             >
               Compare Periods
             </button>
@@ -272,7 +272,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <button
               type="button"
               onClick={() => onSendMessage('Show top 10 landing pages with views, users, and average session duration')}
-              className="hover:text-blue-600 transition-colors"
+              className="hover:text-blue-600 transition-colors cursor-pointer"
             >
               Top Landing Pages
             </button>
@@ -280,7 +280,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <button
               type="button"
               onClick={onOpenQueryBuilder}
-              className="hover:text-blue-600 transition-colors"
+              className="hover:text-blue-600 transition-colors cursor-pointer"
             >
               Query Builder
             </button>

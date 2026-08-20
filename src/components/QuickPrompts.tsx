@@ -5,8 +5,10 @@ import {
   TrendingUp, 
   Globe2, 
   DollarSign, 
-  ArrowRight
+  ArrowRight,
+  BarChart2
 } from 'lucide-react';
+import { TrkknLogo } from './TrkknLogo';
 
 interface QuickPromptsProps {
   onSelectPrompt: (promptText: string) => void;
@@ -16,17 +18,17 @@ interface QuickPromptsProps {
 export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, propertyName }) => {
   const promptGroups = [
     {
-      icon: <Activity className="w-4 h-4 text-emerald-600" />,
-      title: 'Real-time & Overview',
+      icon: <Activity className="w-4 h-4 text-cyan-600" />,
+      title: 'Real-time & Live Activity',
       prompts: [
         'How many active users are on the site right now in real-time?',
-        'Show daily active users and total sessions for the last 30 days',
+        'Show minute-by-minute active users for the last 30 minutes',
         'What are our top 10 most visited pages and landing pages?'
       ]
     },
     {
       icon: <TrendingUp className="w-4 h-4 text-blue-600" />,
-      title: 'Acquisition & Channels',
+      title: 'Acquisition & Channel Growth',
       prompts: [
         'Break down sessions and conversions by Default Channel Group',
         'Compare Google Organic Search vs Paid CPC performance',
@@ -34,8 +36,8 @@ export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, prop
       ]
     },
     {
-      icon: <DollarSign className="w-4 h-4 text-amber-600" />,
-      title: 'Conversions & Revenue',
+      icon: <DollarSign className="w-4 h-4 text-emerald-600" />,
+      title: 'Conversions & Value Delivery',
       prompts: [
         'Show key events (conversions) and total revenue over the last 30 days',
         'What is our overall conversion rate and bounce rate by device?',
@@ -43,8 +45,8 @@ export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, prop
       ]
     },
     {
-      icon: <Globe2 className="w-4 h-4 text-purple-600" />,
-      title: 'Audience & Geography',
+      icon: <Globe2 className="w-4 h-4 text-indigo-600" />,
+      title: 'Audience & Regional Insights',
       prompts: [
         'What are our top 10 countries by active users and revenue?',
         'Break down desktop, mobile, and tablet users with bounce rates',
@@ -55,16 +57,25 @@ export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, prop
 
   return (
     <div className="w-full max-w-4xl mx-auto py-8 px-4">
-      <div className="text-center mb-8 space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
-          <Sparkles className="w-3.5 h-3.5" />
-          Ready to query GA4 via MCP Server
+      <div className="text-center mb-8 space-y-4 flex flex-col items-center">
+        {/* Main Brand Logo Header */}
+        <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-200/80 inline-flex items-center justify-center">
+          <TrkknLogo variant="full" size="lg" />
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          What would you like to explore in <span className="text-blue-600">{propertyName}</span>?
+
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xs">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+          <span>Enterprise Intelligence</span>
+          <span className="text-slate-400">•</span>
+          <span className="text-cyan-300">GA4 MCP Active</span>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Explore Analytics for <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{propertyName}</span>
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
-          Ask questions in natural language. The GA4 Insight Engine converts them into precise dimensions, metrics, and interactive charts.
+        
+        <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto leading-relaxed">
+          Ask questions in natural language. Powered by TRKKN's enterprise GA4 framework and Model Context Protocol to fetch verified dimensions, metrics, and interactive charts.
         </p>
       </div>
 
@@ -72,10 +83,10 @@ export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, prop
         {promptGroups.map((group, gIdx) => (
           <div 
             key={gIdx} 
-            className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/90 hover:border-slate-300 transition-all space-y-2.5 shadow-2xs"
+            className="p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-300 hover:shadow-sm transition-all space-y-2.5 shadow-2xs"
           >
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
-              {group.icon}
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+              <span className="p-1 rounded-md bg-slate-100">{group.icon}</span>
               {group.title}
             </div>
 
@@ -84,11 +95,11 @@ export const QuickPrompts: React.FC<QuickPromptsProps> = ({ onSelectPrompt, prop
                 <button
                   key={pIdx}
                   onClick={() => onSelectPrompt(p)}
-                  className="w-full text-left p-2.5 rounded-lg bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 text-xs font-medium transition-colors flex items-center justify-between group shadow-2xs"
+                  className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/70 hover:border-blue-200 text-xs font-medium transition-all flex items-center justify-between group cursor-pointer"
                 >
-                  <span className="truncate mr-2">{p}</span>
-                  <span className="text-slate-400 group-hover:text-blue-600 text-[11px] shrink-0 font-semibold">
-                    Run →
+                  <span className="truncate mr-2 font-medium">{p}</span>
+                  <span className="text-slate-400 group-hover:text-blue-600 text-[11px] shrink-0 font-bold flex items-center gap-0.5">
+                    Explore <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </button>
               ))}

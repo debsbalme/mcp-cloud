@@ -1,17 +1,15 @@
 import React from 'react';
 import { 
-  BarChart3, 
   ChevronDown, 
   Terminal, 
   SlidersHorizontal, 
   ShieldCheck, 
-  User as UserIcon, 
-  Plus, 
-  Layers,
   Menu,
-  Sparkles
+  Sparkles,
+  Award
 } from 'lucide-react';
 import { GA4Property, UserProfile } from '../types';
+import { TrkknLogo } from './TrkknLogo';
 
 interface HeaderProps {
   currentProperty: GA4Property | null;
@@ -44,11 +42,11 @@ export const Header: React.FC<HeaderProps> = ({
         .join('')
         .substring(0, 2)
         .toUpperCase()
-    : user?.email ? user.email.substring(0, 2).toUpperCase() : 'GA';
+    : user?.email ? user.email.substring(0, 2).toUpperCase() : 'TR';
 
   return (
-    <nav className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-xs shrink-0 z-30">
-      {/* Left Branding */}
+    <nav className="h-16 bg-white border-b border-slate-200/90 px-4 sm:px-6 flex items-center justify-between shadow-2xs shrink-0 z-30">
+      {/* Left Branding with Official TRKKN Logo */}
       <div className="flex items-center gap-3">
         {onToggleSidebar && (
           <button
@@ -60,21 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-xs">
-            <div className="w-4 h-4 bg-white rounded-full opacity-90 flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-            </div>
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-              <span>GA4 Insight Engine</span>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                MCP Server
-              </span>
-            </h1>
-          </div>
-        </div>
+      
       </div>
 
       {/* Center/Right Actions */}
@@ -84,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-property-selector"
             onClick={onOpenPropertyModal}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md text-xs sm:text-sm font-medium transition-colors text-slate-800 group"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-lg text-xs sm:text-sm font-medium transition-colors text-slate-800 group shadow-2xs cursor-pointer"
           >
             <span className="text-slate-500 font-normal hidden sm:inline">Property:</span>
             <span className="font-semibold text-slate-900 truncate max-w-[140px] sm:max-w-[220px]">
@@ -98,17 +82,17 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden lg:flex items-center gap-1.5">
           <button
             onClick={onOpenQueryBuilder}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
             Query Builder
           </button>
           <button
             onClick={onOpenMCPModal}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <Terminal className="w-3.5 h-3.5 text-slate-500" />
-            MCP Tools
+            MCP Protocol
           </button>
         </div>
 
@@ -118,14 +102,14 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="header-auth-btn"
           onClick={onOpenAuthModal}
-          className="flex items-center gap-2.5 hover:opacity-90 transition-opacity text-left"
+          className="flex items-center gap-2.5 hover:opacity-95 transition-opacity text-left cursor-pointer"
         >
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-slate-900 truncate max-w-[120px]">
+            <p className="text-xs font-bold text-slate-900 truncate max-w-[120px]">
               {user ? (user.name || 'Connected User') : 'Sign In'}
             </p>
             <p className="text-[10px] text-slate-500 truncate max-w-[120px]">
-              {user?.email || 'Google Analytics API'}
+              {user?.email || 'Google Analytics 4'}
             </p>
           </div>
 
@@ -133,11 +117,11 @@ export const Header: React.FC<HeaderProps> = ({
             <img 
               src={user.picture} 
               alt={user.name || 'User'} 
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-200"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-200 ring-2 ring-blue-500/20"
             />
           ) : (
-            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full ${user?.accessToken ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-blue-100 text-blue-700 border-blue-200'} border flex items-center justify-center font-bold text-xs sm:text-sm`}>
-              {user ? initials : <ShieldCheck className="w-4 h-4" />}
+            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full ${user?.accessToken ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-slate-900 text-white border-slate-800'} border flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs`}>
+              {user ? initials : <ShieldCheck className="w-4 h-4 text-cyan-400" />}
             </div>
           )}
         </button>

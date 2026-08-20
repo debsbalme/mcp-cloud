@@ -73,7 +73,7 @@ export const QueryBuilderModal: React.FC<QueryBuilderModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-slate-900">GA4 Visual Query Builder</h2>
-              <p className="text-xs text-slate-500">Compose custom GA4 dimensions and metrics for {currentProperty.displayName}</p>
+              <p className="text-xs text-slate-500">Compose custom GA4 dimensions and metrics for {currentProperty?.displayName || 'your property'}</p>
             </div>
           </div>
           <button
