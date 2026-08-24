@@ -58,7 +58,14 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-      
+        <div className="flex items-center gap-3">
+          <TrkknLogo variant="full" size="md" />
+          
+          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-slate-200 text-[11px] font-medium text-slate-500">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+            <span>Google Premier Partner</span>
+          </div>
+        </div>
       </div>
 
       {/* Center/Right Actions */}

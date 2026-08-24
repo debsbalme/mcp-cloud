@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
@@ -23,9 +23,43 @@ export default function App() {
   const [defaultClientId, setDefaultClientId] = useState<string>('');
 
   // 2. GA4 Accounts & Properties State - Purely Live API Data
-  const [accounts, setAccounts] = useState<GA4Account[]>([]);
-  const [currentProperty, setCurrentProperty] = useState<GA4Property | null>(null);
+  const [accounts, setAccounts] = useState<GA4Account[]>(() => {
+    try {
+      const customStored = localStorage.getItem('ga4_custom_properties');
+      if (customStored) {
+        const parsedProps: GA4Property[] = JSON.parse(customStored);
+        if (parsedProps.length > 0) {
+          return [{
+            id: 'accounts/custom',
+            account: 'accounts/custom',
+            displayName: 'Custom GA4 Properties',
+            properties: parsedProps
+          }];
+        }
+      }
+    } catch {}
+    return [];
+  });
+
+  const [currentProperty, setCurrentProperty] = useState<GA4Property | null>(() => {
+    try {
+      const stored = localStorage.getItem('ga4_selected_property');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+    return null;
+  });
   const [isLiveAccountsLoading, setIsLiveAccountsLoading] = useState<boolean>(false);
+
+  const handleSelectProperty = (prop: GA4Property | null) => {
+    setCurrentProperty(prop);
+    if (prop) {
+      localStorage.setItem('ga4_selected_property', JSON.stringify(prop));
+    } else {
+      localStorage.removeItem('ga4_selected_property');
+    }
+  };
 
   // 3. Modals & Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -37,6 +71,7 @@ export default function App() {
   // 4. Chat Messages State (Starts clean)
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingChat, setIsLoadingChat] = useState<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Save/remove user profile in localStorage
   const handleUpdateUser = (newUser: UserProfile | null) => {
@@ -68,7 +103,7 @@ export default function App() {
     const activeToken = token || user?.accessToken;
     if (!activeToken) {
       setAccounts([]);
-      setCurrentProperty(null);
+      handleSelectProperty(null);
       return;
     }
 
@@ -78,21 +113,44 @@ export default function App() {
         headers: { 'Authorization': `Bearer ${activeToken}` }
       });
 
+      let loadedAccounts: GA4Account[] = [];
       if (res.ok) {
         const data = await res.json();
-        if (data.accounts && data.accounts.length > 0) {
-          setAccounts(data.accounts);
-          const allProps: GA4Property[] = data.accounts.flatMap((a: GA4Account) => a.properties);
-          if (allProps.length > 0) {
-            // Keep current property if valid, else pick first available
-            if (!currentProperty || !allProps.some(p => p.propertyId === currentProperty.propertyId)) {
-              setCurrentProperty(allProps[0]);
-            }
-          }
+        if (data.accounts && Array.isArray(data.accounts)) {
+          loadedAccounts = data.accounts;
         }
       } else {
         const errData = await res.json().catch(() => ({}));
         console.warn('Could not fetch GA4 accounts:', errData.error || res.statusText);
+      }
+
+      // Merge saved custom properties if any
+      try {
+        const customStored = localStorage.getItem('ga4_custom_properties');
+        if (customStored) {
+          const customProps: GA4Property[] = JSON.parse(customStored);
+          if (customProps.length > 0) {
+            loadedAccounts = [
+              {
+                id: 'accounts/custom',
+                account: 'accounts/custom',
+                displayName: 'Custom GA4 Properties',
+                properties: customProps
+              },
+              ...loadedAccounts
+            ];
+          }
+        }
+      } catch {}
+
+      setAccounts(loadedAccounts);
+
+      const allProps: GA4Property[] = loadedAccounts.flatMap((a: GA4Account) => a.properties);
+      if (allProps.length > 0) {
+        // Keep current property if valid in loaded list, else pick first available
+        if (!currentProperty || !allProps.some(p => p.propertyId === currentProperty.propertyId)) {
+          handleSelectProperty(allProps[0]);
+        }
       }
     } catch (err) {
       console.warn('Error fetching accounts:', err);
@@ -107,12 +165,42 @@ export default function App() {
     }
   }, [user?.accessToken]);
 
+  // Handle user stopping / canceling the current query execution
+  const handleStopProcessing = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoadingChat(false);
+    setMessages(prev => [
+      ...prev,
+      {
+        id: `stopped_${Date.now()}`,
+        role: 'assistant',
+        content: '⏹️ **Query execution stopped**: The request was terminated by the user.',
+        timestamp: Date.now(),
+        propertyContext: currentProperty ? {
+          id: currentProperty.propertyId,
+          name: currentProperty.displayName
+        } : undefined
+      }
+    ]);
+  };
+
   // Handle user sending a chat query
   const handleSendMessage = async (text: string) => {
     if (!user?.accessToken) {
       setIsAuthModalOpen(true);
       return;
     }
+
+    // Abort any ongoing query before starting a new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const userMsgId = `user_${Date.now()}`;
     const newUserMsg: ChatMessage = {
@@ -126,7 +214,7 @@ export default function App() {
     setIsLoadingChat(true);
 
     try {
-      const chatHistory = messages.map(m => ({
+      const chatHistory = messages.slice(-8).map(m => ({
         role: m.role,
         content: m.content
       }));
@@ -142,15 +230,26 @@ export default function App() {
           history: chatHistory,
           property: currentProperty,
           accessToken: user.accessToken
-        })
+        }),
+        signal: controller.signal
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: `Server error ${response.status}` }));
-        throw new Error(errData.error || `Server returned status ${response.status}`);
+      const responseText = await response.text();
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        // Handle cases where an unexpected HTML or plaintext response was received
+        data = {
+          text: `### ⚠️ Connection or Session Notice\n\nThe server responded unexpectedly. If your Google session has expired, please click **"Sign in with Google"** in the top navigation to reconnect your account.\n\n*Details: ${responseText.slice(0, 100).replace(/<[^>]*>?/gm, '')}*`,
+          toolCalls: [],
+          kpis: []
+        };
       }
 
-      const data = await response.json();
+      if (!response.ok && !data.text) {
+        throw new Error(data?.error || `Server returned status ${response.status}`);
+      }
 
       const assistantMsg: ChatMessage = {
         id: `asst_${Date.now()}`,
@@ -170,11 +269,25 @@ export default function App() {
 
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
+      if (err.name === 'AbortError' || controller.signal.aborted) {
+        console.log('Query execution aborted by user');
+        return;
+      }
       console.error('Chat error:', err);
+      const isAuthError = err.message?.toLowerCase().includes('auth') || 
+                          err.message?.toLowerCase().includes('token') || 
+                          err.message?.toLowerCase().includes('permission') ||
+                          err.message?.toLowerCase().includes('401') ||
+                          err.message?.toLowerCase().includes('403');
+      
+      const errorContent = isAuthError
+        ? `⚠️ **Google Analytics Authorization Issue**:\n\n${err.message}\n\n👉 **Tip**: Click **"Sign in with Google"** in the top navigation to refresh your OAuth access token or choose a different GA4 property.`
+        : `⚠️ **Unable to complete GA4 query**: ${err.message || 'An error occurred while executing the MCP tool.'}\n\nPlease check your property selection or re-authenticate.`;
+
       const errorMsg: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ **Unable to complete GA4 query**: ${err.message || 'An error occurred while executing the MCP tool.'}\n\nPlease check your property selection or Google authorization.`,
+        content: errorContent,
         timestamp: Date.now(),
         propertyContext: currentProperty ? {
           id: currentProperty.propertyId,
@@ -184,6 +297,7 @@ export default function App() {
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoadingChat(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -192,15 +306,29 @@ export default function App() {
   };
 
   const handleAddCustomProperty = (newProp: GA4Property) => {
-    setAccounts(prev => [
-      {
-        id: 'accounts/custom',
-        account: 'accounts/custom',
-        displayName: 'Custom GA4 Properties',
-        properties: [newProp, ...(prev[0]?.properties || [])]
-      },
-      ...prev
-    ]);
+    let existingCustom: GA4Property[] = [];
+    try {
+      const stored = localStorage.getItem('ga4_custom_properties');
+      if (stored) existingCustom = JSON.parse(stored);
+    } catch {}
+
+    const updatedCustom = [newProp, ...existingCustom.filter(p => p.propertyId !== newProp.propertyId)];
+    localStorage.setItem('ga4_custom_properties', JSON.stringify(updatedCustom));
+
+    setAccounts(prev => {
+      const withoutCustom = prev.filter(a => a.id !== 'accounts/custom');
+      return [
+        {
+          id: 'accounts/custom',
+          account: 'accounts/custom',
+          displayName: 'Custom GA4 Properties',
+          properties: updatedCustom
+        },
+        ...withoutCustom
+      ];
+    });
+
+    handleSelectProperty(newProp);
   };
 
   return (
@@ -237,6 +365,7 @@ export default function App() {
             currentProperty={currentProperty}
             isLoading={isLoadingChat}
             onSendMessage={handleSendMessage}
+            onStopProcessing={handleStopProcessing}
             onOpenQueryBuilder={() => setIsQueryBuilderOpen(true)}
             onOpenAuthModal={() => setIsAuthModalOpen(true)}
             isAuthenticated={!!user?.accessToken}
@@ -260,7 +389,7 @@ export default function App() {
         onClose={() => setIsPropertyModalOpen(false)}
         accounts={accounts}
         currentProperty={currentProperty}
-        onSelectProperty={setCurrentProperty}
+        onSelectProperty={handleSelectProperty}
         onAddCustomProperty={handleAddCustomProperty}
       />
 
